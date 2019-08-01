@@ -383,23 +383,31 @@ namespace UnityEngine.UI
 
         public void RefreshCells()
         {
-            if (Application.isPlaying && this.isActiveAndEnabled)
+            if (Application.isPlaying )//&& this.isActiveAndEnabled)
             {
-                itemTypeEnd = itemTypeStart;
-                // recycle items if we can
-                for (int i = 0; i < content.childCount; i++)
+                if (content.childCount < totalCount)
                 {
-                    if (itemTypeEnd < totalCount)
+                    RefillCells();
+                }
+                else
+                {
+                    itemTypeEnd = itemTypeStart;
+                    // recycle items if we can
+                    for (int i = 0; i < content.childCount; i++)
                     {
-                        dataSource.ProvideData(content.GetChild(i), itemTypeEnd);
-                        itemTypeEnd++;
-                    }
-                    else
-                    {
-                        prefabSource.ReturnObject(content.GetChild(i));
-                        i--;
+                        if (itemTypeEnd < totalCount)
+                        {
+                            dataSource.ProvideData(content.GetChild(i), itemTypeEnd);
+                            itemTypeEnd++;
+                        }
+                        else
+                        {
+                            prefabSource.ReturnObject(content.GetChild(i));
+                            i--;
+                        }
                     }
                 }
+                
             }
         }
 
@@ -890,6 +898,24 @@ namespace UnityEngine.UI
             m_PrevContentBounds = m_ContentBounds;
         }
 
+        //=====AddCount=====
+        int tmpTotalCount;
+        int addCount = 0;
+        void AddCount()
+        {
+            addCount = 0;
+            tmpTotalCount = totalCount;
+            if (totalCount % contentConstraintCount != 0)
+            {
+                tmpTotalCount = totalCount + contentConstraintCount - (totalCount) % contentConstraintCount;
+            }
+            if ((itemTypeEnd - itemTypeStart) % contentConstraintCount != 0)
+            {
+                addCount = contentConstraintCount - (itemTypeEnd - itemTypeStart) % contentConstraintCount;
+            }
+        }
+        //=====AddCount=====
+
         private void UpdateScrollbars(Vector2 offset)
         {
             if (m_HorizontalScrollbar)
@@ -897,7 +923,15 @@ namespace UnityEngine.UI
                 //==========LoopScrollRect==========
                 if (m_ContentBounds.size.x > 0 && totalCount > 0)
                 {
-                    m_HorizontalScrollbar.size = Mathf.Clamp01((m_ViewBounds.size.x - Mathf.Abs(offset.x)) / m_ContentBounds.size.x * (itemTypeEnd - itemTypeStart) / totalCount);
+                    //=====AddCount=====
+                    AddCount();
+                    m_HorizontalScrollbar.size = Mathf.Clamp01(
+                        (m_ViewBounds.size.x - Mathf.Abs(offset.x)) 
+                        / m_ContentBounds.size.x 
+                        * (itemTypeEnd - itemTypeStart + addCount) 
+                        / tmpTotalCount
+                        );
+                    //=====AddCount=====
                 }
                 //==========LoopScrollRect==========
                 else
@@ -911,7 +945,15 @@ namespace UnityEngine.UI
                 //==========LoopScrollRect==========
                 if (m_ContentBounds.size.y > 0 && totalCount > 0)
                 {
-                    m_VerticalScrollbar.size = Mathf.Clamp01((m_ViewBounds.size.y - Mathf.Abs(offset.y)) / m_ContentBounds.size.y * (itemTypeEnd - itemTypeStart) / totalCount);
+                    //=====AddCount=====
+                    AddCount();
+                    m_VerticalScrollbar.size = Mathf.Clamp01(
+                        (m_ViewBounds.size.y - Mathf.Abs(offset.y))
+                        / m_ContentBounds.size.y
+                        * (itemTypeEnd - itemTypeStart + addCount) 
+                        / tmpTotalCount
+                        );
+                    //=====AddCount=====
                 }
                 //==========LoopScrollRect==========
                 else
@@ -943,10 +985,11 @@ namespace UnityEngine.UI
                 if(totalCount > 0 && itemTypeEnd > itemTypeStart)
                 {
                     //TODO: consider contentSpacing
-                    float elementSize = m_ContentBounds.size.x / (itemTypeEnd - itemTypeStart);
-                    float totalSize = elementSize * totalCount;
+                    //=====AddCount=====
+                    float elementSize = m_ContentBounds.size.x / (itemTypeEnd - itemTypeStart + addCount);
+                    float totalSize = elementSize * tmpTotalCount;
                     float offset = m_ContentBounds.min.x - elementSize * itemTypeStart;
-
+                    //=====AddCount=====
                     if (totalSize <= m_ViewBounds.size.x)
                         return (m_ViewBounds.min.x > offset) ? 1 : 0;
                     return (m_ViewBounds.min.x - offset) / (totalSize - m_ViewBounds.size.x);
@@ -960,6 +1003,7 @@ namespace UnityEngine.UI
                 SetNormalizedPosition(value, 0);
             }
         }
+   
 
         public float verticalNormalizedPosition
         {
@@ -970,16 +1014,22 @@ namespace UnityEngine.UI
                 if(totalCount > 0 && itemTypeEnd > itemTypeStart)
                 {
                     //TODO: consider contentSpacinge
-                    float elementSize = m_ContentBounds.size.y / (itemTypeEnd - itemTypeStart);
-                    float totalSize = elementSize * totalCount;
+                    //=====AddCount=====
+                    float elementSize = m_ContentBounds.size.y / (itemTypeEnd - itemTypeStart + addCount);
+                    float totalSize = elementSize * (tmpTotalCount);
                     float offset = m_ContentBounds.max.y + elementSize * itemTypeStart;
+                    //=====AddCount=====
 
                     if (totalSize <= m_ViewBounds.size.y)
+                    {
                         return (offset > m_ViewBounds.max.y) ? 1 : 0;
+                    }
                     return (offset - m_ViewBounds.max.y) / (totalSize - m_ViewBounds.size.y);
                 }
                 else
+                {
                     return 0.5f;
+                }
                 //==========LoopScrollRect==========
             }
             set
@@ -1006,18 +1056,22 @@ namespace UnityEngine.UI
             float newLocalPosition = localPosition[axis];
             if (axis == 0)
             {
-                float elementSize = m_ContentBounds.size.x / (itemTypeEnd - itemTypeStart);
-                float totalSize = elementSize * totalCount;
+                //=====AddCount=====
+                float elementSize = m_ContentBounds.size.x / (itemTypeEnd - itemTypeStart + addCount);
+                float totalSize = elementSize * tmpTotalCount;
                 float offset = m_ContentBounds.min.x - elementSize * itemTypeStart;
-                
+                //=====AddCount=====
+
                 newLocalPosition += m_ViewBounds.min.x - value * (totalSize - m_ViewBounds.size[axis]) - offset;
             }
             else if(axis == 1)
             {
-                float elementSize = m_ContentBounds.size.y / (itemTypeEnd - itemTypeStart);
-                float totalSize = elementSize * totalCount;
+                //=====AddCount=====
+                float elementSize = m_ContentBounds.size.y / (itemTypeEnd - itemTypeStart + addCount);
+                float totalSize = elementSize * tmpTotalCount;
                 float offset = m_ContentBounds.max.y + elementSize * itemTypeStart;
-                
+                //=====AddCount=====
+
                 newLocalPosition -= offset - value * (totalSize - m_ViewBounds.size.y) - m_ViewBounds.max.y;
             }
             //==========LoopScrollRect==========
